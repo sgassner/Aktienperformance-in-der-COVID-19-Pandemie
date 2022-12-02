@@ -9,6 +9,7 @@ library(lme4)
 library(lattice)
 library(ggplot2)
 library(scales)
+library(ggpubr)
 library(Cairo)
 CairoWin()
 
@@ -30,248 +31,115 @@ n_countries <- data %>% group_by(Land = COUNTRY) %>% summarize(Anzahl = n())
 n_countries
 write_xlsx(n_countries, "Tabelle_4.xlsx")
 
-# Dummy Variablen für Industrien hinzufügen
-data$BICS_L1 <- as.numeric(data$BICS_L1)
+# USD Wechselkurse zum Datensatz hinzufügen
+wechselkurse <- read_xlsx("WECHSELKURSE_19_01_2021.xlsx")
+data <- data %>% inner_join(wechselkurse, by = c("EQY_FUND_CRNCY" = "EQY_FUND_CRNCY"))
 
-data$BICS10 <- 0
-data$BICS11 <- 0
-data$BICS12 <- 0
-data$BICS13 <- 0
-data$BICS14 <- 0
-data$BICS15 <- 0
-data$BICS16 <- 0
-data$BICS17 <- 0
-data$BICS18 <- 0
-data$BICS19 <- 0
-data$BICS20 <- 0
+# Marktkapitalisierung in 100 Mio. USD berechnen
+data <- data %>% mutate(MKTCAP_USD = MKTCAP * USD_04_01_2021 / 100000000)
 
-data$BICS10[data$BICS_L1 == 10] <- 1
-data$BICS11[data$BICS_L1 == 11] <- 1
-data$BICS12[data$BICS_L1 == 12] <- 1
-data$BICS13[data$BICS_L1 == 13] <- 1
-data$BICS14[data$BICS_L1 == 14] <- 1
-data$BICS15[data$BICS_L1 == 15] <- 1
-data$BICS16[data$BICS_L1 == 16] <- 1
-data$BICS17[data$BICS_L1 == 17] <- 1
-data$BICS18[data$BICS_L1 == 18] <- 1
-data$BICS19[data$BICS_L1 == 19] <- 1
-data$BICS20[data$BICS_L1 == 20] <- 1
+# BICS Level 2 aus BICS Level 3 erstellen
+data$BICS_L2 <- sub("^(\\d{4}).*$", "\\1", data$BICS_L3)
+data$BICS_L2 <- as.double(data$BICS_L2)
+
+# Heterogenitätsfaktoren zum Datensatz hinzufügen
+heterogenitaetsfaktoren <- read_xlsx("RATIOS_BICS.xlsx")
+data <- data %>% inner_join(heterogenitaetsfaktoren, by = c("BICS_L2" = "BICS_L2"))
+
+# Datensatz ins Long-Format umwandeln
+data_long <- data
+names(data_long) <- c("TICKER", "SHORT_NAME", "BICS_L1", "BICS_L1_NAME", "BICS_L3", 
+                      "EQY_FUND_CRNCY", "MKTCAP", "COUNTRY", "0", "1", "2", "3", 
+                      "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14",
+                      "15", "16", "17", "18", "19", "20", "21", "22", "23", "24",
+                      "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", 
+                      "35", "36", "37", "38", "39", "40", "41", "42", "43", 
+                      "USD_31_03_2020", "USD_30_06_2020", "USD_30_09_2020", 
+                      "USD_31_12_2020", "USD_04_01_2021", "MKTCAP_USD", 
+                      "BICS_L2", "HOME", "DE_RATIO", "Q_RATIO")
+
+data_long <- data_long %>% gather(QUARTAL, PRICE, -c(TICKER, SHORT_NAME, BICS_L1, BICS_L1_NAME, BICS_L3, EQY_FUND_CRNCY, MKTCAP, COUNTRY,
+                                                     USD_30_06_2020, USD_30_09_2020, USD_31_12_2020, USD_04_01_2021,
+                                                     MKTCAP_USD, BICS_L2, HOME, DE_RATIO, Q_RATIO))
 
 #QOQ-Performance berechnen (in %)
-data$QOQ_2010_Q2 <- ((data$'2010_Q2' - data$'2010_Q1')/data$'2010_Q1')*100
-data$QOQ_2010_Q3 <- ((data$'2010_Q3' - data$'2010_Q2')/data$'2010_Q2')*100
-data$QOQ_2010_Q4 <- ((data$'2010_Q4' - data$'2010_Q3')/data$'2010_Q3')*100
+data_long <- data_long %>% group_by(TICKER) %>% mutate(QOQ = (((PRICE / lag(PRICE))-1)*100)) %>% ungroup()
 
-data$QOQ_2011_Q1 <- ((data$'2011_Q1' - data$'2010_Q4')/data$'2010_Q4')*100
-data$QOQ_2011_Q2 <- ((data$'2011_Q2' - data$'2011_Q1')/data$'2011_Q1')*100
-data$QOQ_2011_Q3 <- ((data$'2011_Q3' - data$'2011_Q2')/data$'2011_Q2')*100
-data$QOQ_2011_Q4 <- ((data$'2011_Q4' - data$'2011_Q3')/data$'2011_Q3')*100
-
-data$QOQ_2012_Q1 <- ((data$'2012_Q1' - data$'2011_Q4')/data$'2011_Q4')*100
-data$QOQ_2012_Q2 <- ((data$'2012_Q2' - data$'2012_Q1')/data$'2012_Q1')*100
-data$QOQ_2012_Q3 <- ((data$'2012_Q3' - data$'2012_Q2')/data$'2012_Q2')*100
-data$QOQ_2012_Q4 <- ((data$'2012_Q4' - data$'2012_Q3')/data$'2012_Q3')*100
-
-data$QOQ_2013_Q1 <- ((data$'2013_Q1' - data$'2012_Q4')/data$'2012_Q4')*100
-data$QOQ_2013_Q2 <- ((data$'2013_Q2' - data$'2013_Q1')/data$'2013_Q1')*100
-data$QOQ_2013_Q3 <- ((data$'2013_Q3' - data$'2013_Q2')/data$'2013_Q2')*100
-data$QOQ_2013_Q4 <- ((data$'2013_Q4' - data$'2013_Q3')/data$'2013_Q3')*100
-
-data$QOQ_2014_Q1 <- ((data$'2014_Q1' - data$'2013_Q4')/data$'2013_Q4')*100
-data$QOQ_2014_Q2 <- ((data$'2014_Q2' - data$'2014_Q1')/data$'2014_Q1')*100
-data$QOQ_2014_Q3 <- ((data$'2014_Q3' - data$'2014_Q2')/data$'2014_Q2')*100
-data$QOQ_2014_Q4 <- ((data$'2014_Q4' - data$'2014_Q3')/data$'2014_Q3')*100
-
-data$QOQ_2015_Q1 <- ((data$'2015_Q1' - data$'2014_Q4')/data$'2014_Q4')*100
-data$QOQ_2015_Q2 <- ((data$'2015_Q2' - data$'2015_Q1')/data$'2015_Q1')*100
-data$QOQ_2015_Q3 <- ((data$'2015_Q3' - data$'2015_Q2')/data$'2015_Q2')*100
-data$QOQ_2015_Q4 <- ((data$'2015_Q4' - data$'2015_Q3')/data$'2015_Q3')*100
-
-data$QOQ_2016_Q1 <- ((data$'2016_Q1' - data$'2015_Q4')/data$'2015_Q4')*100
-data$QOQ_2016_Q2 <- ((data$'2016_Q2' - data$'2016_Q1')/data$'2016_Q1')*100
-data$QOQ_2016_Q3 <- ((data$'2016_Q3' - data$'2016_Q2')/data$'2016_Q2')*100
-data$QOQ_2016_Q4 <- ((data$'2016_Q4' - data$'2016_Q3')/data$'2016_Q3')*100
-
-data$QOQ_2017_Q1 <- ((data$'2017_Q1' - data$'2016_Q4')/data$'2016_Q4')*100
-data$QOQ_2017_Q2 <- ((data$'2017_Q2' - data$'2017_Q1')/data$'2017_Q1')*100
-data$QOQ_2017_Q3 <- ((data$'2017_Q3' - data$'2017_Q2')/data$'2017_Q2')*100
-data$QOQ_2017_Q4 <- ((data$'2017_Q4' - data$'2017_Q3')/data$'2017_Q3')*100
-
-data$QOQ_2018_Q1 <- ((data$'2018_Q1' - data$'2017_Q4')/data$'2017_Q4')*100
-data$QOQ_2018_Q2 <- ((data$'2018_Q2' - data$'2018_Q1')/data$'2018_Q1')*100
-data$QOQ_2018_Q3 <- ((data$'2018_Q3' - data$'2018_Q2')/data$'2018_Q2')*100
-data$QOQ_2018_Q4 <- ((data$'2018_Q4' - data$'2018_Q3')/data$'2018_Q3')*100
-
-data$QOQ_2019_Q1 <- ((data$'2019_Q1' - data$'2018_Q4')/data$'2018_Q4')*100
-data$QOQ_2019_Q2 <- ((data$'2019_Q2' - data$'2019_Q1')/data$'2019_Q1')*100
-data$QOQ_2019_Q3 <- ((data$'2019_Q3' - data$'2019_Q2')/data$'2019_Q2')*100
-data$QOQ_2019_Q4 <- ((data$'2019_Q4' - data$'2019_Q3')/data$'2019_Q3')*100
-
-data$QOQ_2020_Q1 <- ((data$'2020_Q1' - data$'2019_Q4')/data$'2019_Q4')*100
-data$QOQ_2020_Q2 <- ((data$'2020_Q2' - data$'2020_Q1')/data$'2020_Q1')*100
-data$QOQ_2020_Q3 <- ((data$'2020_Q3' - data$'2020_Q2')/data$'2020_Q2')*100
-data$QOQ_2020_Q4 <- ((data$'2020_Q4' - data$'2020_Q3')/data$'2020_Q3')*100
+# Data Cleaning
+data_long <- data_long[complete.cases(data_long), ]
+data_long$QUARTAL <- as.double(data_long$QUARTAL)
 
 # Time Series für QOQ-Performance 2010-2019 (t = 1 bis 39 / 2010_Q2 bis 2019_Q4)
 # und 2020 (t = 40 bis 43 / 2020_Q1 bis 2020_Q4 erstellen)
-
-QOQ_time_series <- data %>% select(1, 64:102)
-QOQ_time_series <- gather(QOQ_time_series, key = "PERIODE", value = "QOQ", c(-TICKER))
-
-QOQ_time_series_2020 <- data %>% select(1, 103:106)
-QOQ_time_series_2020 <- gather(QOQ_time_series_2020, key = "PERIODE", value = "QOQ", c(-TICKER))
-
-
-QOQ_time_series$PERIODE[QOQ_time_series$PERIODE == "QOQ_2010_Q2"] <- 1
-QOQ_time_series$PERIODE[QOQ_time_series$PERIODE == "QOQ_2010_Q3"] <- 2
-QOQ_time_series$PERIODE[QOQ_time_series$PERIODE == "QOQ_2010_Q4"] <- 3
-
-QOQ_time_series$PERIODE[QOQ_time_series$PERIODE == "QOQ_2011_Q1"] <- 4
-QOQ_time_series$PERIODE[QOQ_time_series$PERIODE == "QOQ_2011_Q2"] <- 5
-QOQ_time_series$PERIODE[QOQ_time_series$PERIODE == "QOQ_2011_Q3"] <- 6
-QOQ_time_series$PERIODE[QOQ_time_series$PERIODE == "QOQ_2011_Q4"] <- 7
-
-QOQ_time_series$PERIODE[QOQ_time_series$PERIODE == "QOQ_2012_Q1"] <- 8
-QOQ_time_series$PERIODE[QOQ_time_series$PERIODE == "QOQ_2012_Q2"] <- 9
-QOQ_time_series$PERIODE[QOQ_time_series$PERIODE == "QOQ_2012_Q3"] <- 10
-QOQ_time_series$PERIODE[QOQ_time_series$PERIODE == "QOQ_2012_Q4"] <- 11
-
-QOQ_time_series$PERIODE[QOQ_time_series$PERIODE == "QOQ_2013_Q1"] <- 12
-QOQ_time_series$PERIODE[QOQ_time_series$PERIODE == "QOQ_2013_Q2"] <- 13
-QOQ_time_series$PERIODE[QOQ_time_series$PERIODE == "QOQ_2013_Q3"] <- 14
-QOQ_time_series$PERIODE[QOQ_time_series$PERIODE == "QOQ_2013_Q4"] <- 15
-
-QOQ_time_series$PERIODE[QOQ_time_series$PERIODE == "QOQ_2014_Q1"] <- 16
-QOQ_time_series$PERIODE[QOQ_time_series$PERIODE == "QOQ_2014_Q2"] <- 17
-QOQ_time_series$PERIODE[QOQ_time_series$PERIODE == "QOQ_2014_Q3"] <- 18
-QOQ_time_series$PERIODE[QOQ_time_series$PERIODE == "QOQ_2014_Q4"] <- 19
-
-QOQ_time_series$PERIODE[QOQ_time_series$PERIODE == "QOQ_2015_Q1"] <- 20
-QOQ_time_series$PERIODE[QOQ_time_series$PERIODE == "QOQ_2015_Q2"] <- 21
-QOQ_time_series$PERIODE[QOQ_time_series$PERIODE == "QOQ_2015_Q3"] <- 22
-QOQ_time_series$PERIODE[QOQ_time_series$PERIODE == "QOQ_2015_Q4"] <- 23
-
-QOQ_time_series$PERIODE[QOQ_time_series$PERIODE == "QOQ_2016_Q1"] <- 24
-QOQ_time_series$PERIODE[QOQ_time_series$PERIODE == "QOQ_2016_Q2"] <- 25
-QOQ_time_series$PERIODE[QOQ_time_series$PERIODE == "QOQ_2016_Q3"] <- 26
-QOQ_time_series$PERIODE[QOQ_time_series$PERIODE == "QOQ_2016_Q4"] <- 27
-
-QOQ_time_series$PERIODE[QOQ_time_series$PERIODE == "QOQ_2017_Q1"] <- 28
-QOQ_time_series$PERIODE[QOQ_time_series$PERIODE == "QOQ_2017_Q2"] <- 29
-QOQ_time_series$PERIODE[QOQ_time_series$PERIODE == "QOQ_2017_Q3"] <- 30
-QOQ_time_series$PERIODE[QOQ_time_series$PERIODE == "QOQ_2017_Q4"] <- 31
-
-QOQ_time_series$PERIODE[QOQ_time_series$PERIODE == "QOQ_2018_Q1"] <- 32
-QOQ_time_series$PERIODE[QOQ_time_series$PERIODE == "QOQ_2018_Q2"] <- 33
-QOQ_time_series$PERIODE[QOQ_time_series$PERIODE == "QOQ_2018_Q3"] <- 34
-QOQ_time_series$PERIODE[QOQ_time_series$PERIODE == "QOQ_2018_Q4"] <- 35
-
-QOQ_time_series$PERIODE[QOQ_time_series$PERIODE == "QOQ_2019_Q1"] <- 36
-QOQ_time_series$PERIODE[QOQ_time_series$PERIODE == "QOQ_2019_Q2"] <- 37
-QOQ_time_series$PERIODE[QOQ_time_series$PERIODE == "QOQ_2019_Q3"] <- 38
-QOQ_time_series$PERIODE[QOQ_time_series$PERIODE == "QOQ_2019_Q4"] <- 39
-
-QOQ_time_series_2020$PERIODE[QOQ_time_series_2020$PERIODE == "QOQ_2020_Q1"] <- 40
-QOQ_time_series_2020$PERIODE[QOQ_time_series_2020$PERIODE == "QOQ_2020_Q2"] <- 41
-QOQ_time_series_2020$PERIODE[QOQ_time_series_2020$PERIODE == "QOQ_2020_Q3"] <- 42
-QOQ_time_series_2020$PERIODE[QOQ_time_series_2020$PERIODE == "QOQ_2020_Q4"] <- 43
-
-QOQ_time_series$PERIODE <- as.numeric(QOQ_time_series$PERIODE)
-QOQ_time_series <- as.data.frame(QOQ_time_series)
-
-QOQ_time_series_2020$PERIODE <- as.numeric(QOQ_time_series_2020$PERIODE)
-QOQ_time_series_2020 <- as.data.frame(QOQ_time_series_2020)
+QOQ_time_series <- data_long %>% filter(QUARTAL %in% c(1:39))
 
 # Schätzung des Performance-Trends (Tabelle 5)
-fits <- lmList(QOQ ~ PERIODE | TICKER, data=QOQ_time_series)
-sumfun <- function(x) c(coef(x),summary(x)$r.squared)
-lm1 <- t(sapply(fits,sumfun))
+fits <- lmList(QOQ ~ QUARTAL | TICKER, data = QOQ_time_series)
+sumfun <- function(x) c(coef(x), summary(x)$r.squared)
+lm1 <- t(sapply(fits, sumfun))
 lm1 <- cbind(rownames(lm1), data.frame(lm1, row.names=NULL))
 names(lm1) <-  c("TICKER", "ACHSENABSCHNITT","STEIGUNG","R_SQUARED")
 
 write_xlsx(lm1, "Tabelle_5.xlsx")
 
-
 # Achsenabschnitt und Steigung der Regression 1 mit Datensatz verknüpfen
-library(plyr)
-data <- join(data, lm1, by="TICKER")
-detach("package:plyr", unload=TRUE)
+data_long <- data_long %>% inner_join(lm1, by = c("TICKER" = "TICKER"))
 
 # Prognose für 2020 Q1-Q4
-data$EST_QOQ_Q1_2020 <- (data$ACHSENABSCHNITT + (data$STEIGUNG * 40))
-data$EST_QOQ_Q2_2020 <- (data$ACHSENABSCHNITT + (data$STEIGUNG * 41))
-data$EST_QOQ_Q3_2020 <- (data$ACHSENABSCHNITT + (data$STEIGUNG * 42))
-data$EST_QOQ_Q4_2020 <- (data$ACHSENABSCHNITT + (data$STEIGUNG * 43))
+prognose_Q1_2020 <- data_long %>% filter(QUARTAL == 40) %>% mutate(EST_QOQ_Q1_2020 = ACHSENABSCHNITT + (STEIGUNG * 40))
+prognose_Q2_2020 <- data_long %>% filter(QUARTAL == 41) %>% mutate(EST_QOQ_Q2_2020 = ACHSENABSCHNITT + (STEIGUNG * 41))
+prognose_Q3_2020 <- data_long %>% filter(QUARTAL == 42) %>% mutate(EST_QOQ_Q3_2020 = ACHSENABSCHNITT + (STEIGUNG * 42))
+prognose_Q4_2020 <- data_long %>% filter(QUARTAL == 43) %>% mutate(EST_QOQ_Q4_2020 = ACHSENABSCHNITT + (STEIGUNG * 43))
 
 # Performance-Deltas berechnen
-data$DELTA_QOQ_Q1_2020 <- (data$QOQ_2020_Q1 - data$EST_QOQ_Q1_2020)
-data$DELTA_QOQ_Q2_2020 <- (data$QOQ_2020_Q2 - data$EST_QOQ_Q2_2020)
-data$DELTA_QOQ_Q3_2020 <- (data$QOQ_2020_Q3 - data$EST_QOQ_Q3_2020)
-data$DELTA_QOQ_Q4_2020 <- (data$QOQ_2020_Q4 - data$EST_QOQ_Q4_2020)
+prognose_Q1_2020 <- prognose_Q1_2020 %>% mutate(DELTA_QOQ_Q1_2020 = QOQ - EST_QOQ_Q1_2020)
+prognose_Q2_2020 <- prognose_Q2_2020 %>% mutate(DELTA_QOQ_Q2_2020 = QOQ - EST_QOQ_Q2_2020)
+prognose_Q3_2020 <- prognose_Q3_2020 %>% mutate(DELTA_QOQ_Q3_2020 = QOQ - EST_QOQ_Q3_2020)
+prognose_Q4_2020 <- prognose_Q4_2020 %>% mutate(DELTA_QOQ_Q4_2020 = QOQ - EST_QOQ_Q4_2020)
 
 # Durchschnittliches Performance-Delta pro Industrie und Quartal (Tabelle 10)
-DELTA_QOQ_AVG_2020_INDUSTRY <- data %>% group_by(Industrie = BICS_L1) %>% 
-  summarize(Delta_Q1 = mean(DELTA_QOQ_Q1_2020),
-            Delta_Q2 = mean(DELTA_QOQ_Q2_2020),
-            Delta_Q3 = mean(DELTA_QOQ_Q3_2020),
-            Delta_Q4 = mean(DELTA_QOQ_Q4_2020))
+deltas_Q1 <- prognose_Q1_2020 %>% group_by(Industrie = BICS_L1) %>% summarize(Delta_Q1 = mean(DELTA_QOQ_Q1_2020))
+deltas_Q2 <- prognose_Q2_2020 %>% group_by(Industrie = BICS_L1) %>% summarize(Delta_Q2 = mean(DELTA_QOQ_Q2_2020))  
+deltas_Q3 <- prognose_Q3_2020 %>% group_by(Industrie = BICS_L1) %>% summarize(Delta_Q3 = mean(DELTA_QOQ_Q3_2020))
+deltas_Q4 <- prognose_Q4_2020 %>% group_by(Industrie = BICS_L1) %>% summarize(Delta_Q4 = mean(DELTA_QOQ_Q4_2020))
 
-DELTA_QOQ_AVG_2020_INDUSTRY
-avg_delta <- summarize_all(DELTA_QOQ_AVG_2020_INDUSTRY, mean)
-DELTA_QOQ_AVG_2020_INDUSTRY <- rbind(DELTA_QOQ_AVG_2020_INDUSTRY, avg_delta) 
-DELTA_QOQ_AVG_2020_INDUSTRY[12,1] <- 0 # 0 = Durchschnitt über alle BICS
-DELTA_QOQ_AVG_2020_INDUSTRY
+deltas_Q1_Q4 <- deltas_Q1 %>% inner_join(deltas_Q2, by = c("Industrie" = "Industrie")) %>% 
+                              inner_join(deltas_Q3, by = c("Industrie" = "Industrie")) %>% 
+                              inner_join(deltas_Q4, by = c("Industrie" = "Industrie"))  
+
+avg_delta <- summarize_all(deltas_Q1_Q4, mean)
+DELTA_QOQ_AVG_2020_INDUSTRY <- rbind(deltas_Q1_Q4, avg_delta) 
+DELTA_QOQ_AVG_2020_INDUSTRY[12,1] <- "Durchschnitt"
 
 write_xlsx(DELTA_QOQ_AVG_2020_INDUSTRY, "Tabelle_10.xlsx")
 
 
 # Beispiel Lufthansa (Abbildung 2)
-trend_example <- as.data.frame(QOQ_time_series[grep("LHA GR Equity", QOQ_time_series$TICKER), ])
-trend_example_2020 <- as.data.frame(QOQ_time_series_2020[grep("LHA GR Equity", QOQ_time_series_2020$TICKER), ])
+trend_example <- data_long %>% filter(TICKER == "LHA GR Equity", QUARTAL %in% c(1:39)) %>% ungroup()
+trend_example_2020 <- data_long %>% filter(TICKER == "LHA GR Equity", QUARTAL %in% c(40:43)) %>% ungroup()
 
-fits2 <- lmList(QOQ ~ PERIODE | TICKER, data=trend_example)
-
-library(ggpubr)
+fits2 <- lmList(QOQ ~ QUARTAL | TICKER, data = trend_example)
 
 Abbildung_2 <- 
-  ggplot(trend_example ,aes(x = PERIODE, y = QOQ)) + 
+  ggplot(trend_example ,aes(x = QUARTAL, y = QOQ)) + 
   geom_point(color="#2a86c7", size=2) + 
   geom_smooth(method = "lm", fullrange=TRUE, color="#244990")+
   stat_regline_equation(label.y = -70, aes(label = ..eq.label..)) +
   stat_regline_equation(label.y = -90, aes(label = ..rr.label..)) +
   xlim(0,44) +
-  ylim(-100,+100)+
+  ylim(-100,+100) +
   labs(y="Quartalsperformance (%)  \n  ", x = "  \n  Beobachtungsperiode (2010-2020)") +
   theme(plot.title = element_text(face = "bold", size = (20)), 
         legend.title = element_blank(), 
         legend.text = element_text(face = "plain", size = (10)), 
         axis.title = element_text(size = (12)),
         axis.text = element_text(face = "plain", size = (10)))+
-  geom_point(data=trend_example_2020, aes(x=PERIODE, y=QOQ), color="#C7198C", size=2) 
+  geom_point(data=trend_example_2020, aes(x=QUARTAL, y=QOQ), color="#C7198C", size=2) 
 
 Abbildung_2
 
 ggsave(Abbildung_2, filename = 'Abbildung 2.png', dpi = 300, type = 'cairo',
        width = 6.3, height = 3.6, units = 'in')
-
-# USD Wechselkurse zum Datensatz hinzufügen
-wechselkurse <- read_xlsx("WECHSELKURSE_19_01_2021.xlsx")
-wechselkurse$`CRNCY/USD_04.01.2021` <- as.numeric(wechselkurse$`CRNCY/USD_04.01.2021`)
-library(plyr)
-data <- join(data, wechselkurse, by="EQY_FUND_CRNCY")
-detach("package:plyr", unload=TRUE)
-
-# Marktkapitalisierung in 100 Mio. USD berechnen
-data$MKTCAP_USD <- data$MKTCAP * data$`CRNCY/USD_04.01.2021` / 100000000
-
-# BICS Level 2 aus BICS Level 3 erstellen
-data$BICS_L2 <- sub("^(\\d{4}).*$", "\\1", data$BICS_L3)
-
-# Heterogenitätsfaktoren zum Datensatz hinzufügen
-heterogenitaetsfaktoren <- read_xlsx("RATIOS_BICS.xlsx")
-library(plyr)
-data <- join(data, heterogenitaetsfaktoren, by="BICS_L2")
-detach("package:plyr", unload=TRUE)
 
 # Home-Office-Potential pro BICS Level 1 Sektor (Tabelle 6)
 home_office_bics_level_1 <- data %>% group_by(BICS_L1) %>% 
@@ -294,19 +162,19 @@ write_xlsx(q_ratio_bics_level_1, "Tabelle_8.xlsx")
 # Regression 2: Einfluss der Heterogenitätsfaktoren
 lm2 <- lm(formula = DELTA_QOQ_Q1_2020 ~ MKTCAP_USD + HOME +
             DE_RATIO + Q_RATIO,
-          data = data)
+          data = prognose_Q1_2020)
 
 lm3 <- lm(formula = DELTA_QOQ_Q2_2020 ~ MKTCAP_USD + HOME +
             DE_RATIO + Q_RATIO,
-          data = data)
+          data = prognose_Q2_2020)
 
 lm4 <- lm(formula = DELTA_QOQ_Q3_2020 ~ MKTCAP_USD + HOME +
             DE_RATIO + Q_RATIO,
-          data = data)
+          data = prognose_Q3_2020)
 
 lm5 <- lm(formula = DELTA_QOQ_Q4_2020 ~ MKTCAP_USD + HOME +
             DE_RATIO + Q_RATIO,
-          data = data)
+          data = prognose_Q4_2020)
 
 library(memisc)
 library(stargazer)
@@ -334,11 +202,14 @@ industry_names <- c("Communications", "Consumer Discretionary",
                     "Government", "Durchschnitt")
 
 library(reshape2)
+
 DELTA_QOQ_AVG_2020_INDUSTRY_long <- DELTA_QOQ_AVG_2020_INDUSTRY
 names(DELTA_QOQ_AVG_2020_INDUSTRY_long) <- c("Industrie", "Q1 2020", "Q2 2020", "Q3 2020", "Q4 2020")
 DELTA_QOQ_AVG_2020_INDUSTRY_long$Industrie <- industry_names
 DELTA_QOQ_AVG_2020_INDUSTRY_long <- reshape2::melt(DELTA_QOQ_AVG_2020_INDUSTRY_long, id.var = "Industrie")
+
 detach("package:reshape2", unload=TRUE)
+
 DELTA_QOQ_AVG_2020_INDUSTRY_long$Industrie <- factor(DELTA_QOQ_AVG_2020_INDUSTRY_long$Industrie, 
                                                     levels = c("Durchschnitt","Government", "Utilities", "Technology",
                                                                "Materials", "Industrials","Health Care",

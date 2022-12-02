@@ -116,15 +116,14 @@ ggsave(Abbildung_1, filename = 'Abbildung 1.png', dpi = 300, type = 'cairo',
 # Akive COVID-19-Fälle pro 100 Tsd. Einwohner (Tabelle 1)
 covid_active_oecd <- as.data.frame(covid_confirmed_oecd$Country.Region)
 names(covid_active_oecd) <- c("Land")
+
 covid_active_oecd$active_31.03.2020 <- covid_confirmed_oecd$X3.31.20 - covid_recovered_oecd$X3.31.20 - covid_deaths_oecd$X3.31.20
 covid_active_oecd$active_30.06.2020 <- covid_confirmed_oecd$X6.30.20 - covid_recovered_oecd$X6.30.20 - covid_deaths_oecd$X6.30.20
 covid_active_oecd$active_30.09.2020 <- covid_confirmed_oecd$X9.30.20 - covid_recovered_oecd$X9.30.20 - covid_deaths_oecd$X9.30.20
 covid_active_oecd$active_31.12.2020 <- covid_confirmed_oecd$X12.31.20 - covid_recovered_oecd$X12.31.20 - covid_deaths_oecd$X12.31.20
 
 bevoelkerung_oecd <- read_xlsx("WELTBEVOELKERUNG.xlsx")
-library(plyr)
-covid_active_oecd <- join(covid_active_oecd, bevoelkerung_oecd, by="Land")
-detach("package:plyr", unload=TRUE)
+covid_active_oecd <- covid_active_oecd %>% inner_join(bevoelkerung_oecd, by = c("Land" = "Land"))
 
 covid_active_oecd_100k <- as.data.frame(covid_active_oecd$Land)
 names(covid_active_oecd_100k) <- c("Land")
