@@ -13,7 +13,7 @@ Sandro Gassner
 ## Methodik
 
 ### Datenerhebung
-Die Analyse basiert auf historischen Aktienkursdaten, die vom Bloomberg Terminal am 4. Januar 2021 und 1. Februar 2021 abgerufen wurden. Der Datensatz umfasst die 1.000 größten Unternehmen nach Marktkapitalisierung in jedem OECD-Land, was zu insgesamt 7.725 Unternehmen führt.
+Die Analyse basiert auf historischen Aktienkursdaten, die vom Bloomberg Terminal am 4. Januar 2021 und 1. Februar 2021 abgerufen wurden. Der Datensatz umfasst die 1'000 größten Unternehmen nach Marktkapitalisierung in jedem OECD-Land, was zu insgesamt 7'725 Unternehmen führt.
 
 ### Abhängige Variable
 Die abhängige Variable ist die Abweichung der Aktienperformance während der COVID-19-Pandemie im Jahr 2020 im Vergleich zu einem prognostizierten Trend basierend auf den letzten 10 Jahren. Diese Abweichung wird auf Quartalsbasis gemessen.
@@ -23,18 +23,16 @@ Zur Erklärung der Performanceabweichungen werden folgende Variablen herangezoge
 
 - **Home-Office-Potential**: Basierend auf der Arbeit von Dingel & Neiman (2020), die das Home-Office-Potential für verschiedene Industriezweige gemäß NAICS-Klassifikation berechnet haben. Diese Werte wurden auf BICS-Sektoren übertragen.
 - **Marktkapitalisierung**: Gemessen in 100 Millionen US-Dollar, approximiert per 4. Januar 2021.
-- **Verschuldungsgrad (Debt-to-Equity Ratio)**: Verwendet wurden industriespezifische Durchschnittswerte basierend auf Daten von Avdeev & Co. (2019), umgerechnet von SIC auf BICS.
-- **Liquiditätsgrad 2 (Quick Ratio)**: Ebenfalls basierend auf den Daten von Avdeev & Co. (2019), umgerechnet von SIC auf BICS.
+- **Verschuldungsgrad (Debt-to-Equity Ratio)**: Verwendet wurden industriespezifische Durchschnittswerte basierend auf Daten von Avdeev & Co. (2019), angepasst von SIC auf BICS.
+- **Liquiditätsgrad 2 (Quick Ratio)**: Ebenfalls basierend auf den Daten von Avdeev & Co. (2019), angepasst von SIC auf BICS.
 
 ### Empirischer Ansatz
 Ein multiples lineares Regressionsmodell wird verwendet, um die Abweichungen der Aktienperformance während der Pandemie zu erklären. Die abhängige Variable ist die Performanceabweichung, während die unabhängigen Variablen das Home-Office-Potential, die Marktkapitalisierung, der Verschuldungsgrad und der Liquiditätsgrad 2 sind.
 
 ### Regressionsmodell
-Das Regressionsmodell zur Erklärung der Performanceabweichung (\(\Delta Performance_{i,t}\)) lautet:
+Das Regressionsmodell zur Erklärung der Performanceabweichung (Δ Performance_{i,t}) lautet:
 
-\[
-\Delta Performance_{i,t} = \beta_0 + \beta_1 \cdot HOME_i + \beta_2 \cdot MKTCAP_i + \beta_3 \cdot DE\_RATIO_i + \beta_4 \cdot Q\_RATIO_i + u_i
-\]
+Δ Performance_{i,t} = β_0 + β_1 * HOME_i + β_2 * MKTCAP_i + β_3 * DE_RATIO_i + β_4 * Q_RATIO_i + u_i
 
 ## Datenquellen
 
