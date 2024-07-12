@@ -30,11 +30,9 @@ Zur Erklärung der Performanceabweichungen werden folgende Variablen herangezoge
 Ein multiples lineares Regressionsmodell wird verwendet, um die Abweichungen der Aktienperformance während der Pandemie zu erklären. Die abhängige Variable ist die Performanceabweichung, während die unabhängigen Variablen das Home-Office-Potential, die Marktkapitalisierung, der Verschuldungsgrad und der Liquiditätsgrad 2 sind.
 
 ### Regressionsmodell
-Das Regressionsmodell zur Erklärung der Performanceabweichung (`$\Delta Performance_{i,t}$`) lautet:
+Das Regressionsmodell zur Erklärung der Performanceabweichung (Δ Performance_i_t) lautet:
 
-$$
-\Delta Performance_{i,t} = \beta_0 + \beta_1 \cdot HOME_i + \beta_2 \cdot MKTCAP_i + \beta_3 \cdot DE\_RATIO_i + \beta_4 \cdot Q\_RATIO_i + u_i
-$$
+Δ Performance_{i,t} = β_0 + β_1 * HOME_i + β_2 * MKTCAP_i + β_3 * DE_RATIO_i + β_4 * Q_RATIO_i + u_i
 
 ## Datenquellen
 
