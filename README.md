@@ -13,7 +13,7 @@ Sandro Gassner
 ## Methodik
 
 ### Datenerhebung
-Die Analyse basiert auf historischen Aktienkursdaten, die vom Bloomberg Terminal am 4. Januar 2021 und 1. Februar 2021 abgerufen wurden. Der Datensatz umfasst die 1'000 größten Unternehmen nach Marktkapitalisierung in jedem OECD-Land, was zu insgesamt 7'725 Unternehmen führt.
+Die Analyse basiert auf historischen Aktienkursdaten, die vom Bloomberg Terminal am 4. Januar 2021 und 1. Februar 2021 abgerufen wurden. Der Datensatz umfasst die 1'000 größten Unternehmen nach Marktkapitalisierung in jedem OECD-Land.
 
 ### Abhängige Variable
 Die abhängige Variable ist die Abweichung der Aktienperformance während der COVID-19-Pandemie im Jahr 2020 im Vergleich zu einem prognostizierten Trend basierend auf den letzten 10 Jahren. Diese Abweichung wird auf Quartalsbasis gemessen.
